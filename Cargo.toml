@@ -1,0 +1,15 @@
+[package]
+name = "rust-gb"
+version = "0.1.0"
+authors = ["Yun Yeomin"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sdl2 = "0.33.0"
+rand = "0.7.3"
+memmap = "0.7.0"
+
+[target.'cfg(windows)'.dependencies]
+sdl2.features=["bundled", "static-link"]
