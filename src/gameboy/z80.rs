@@ -1,10 +1,10 @@
-use std::num::Wrapping;
 use super::memory_bus::MemoryBus;
-use std::ops::{AddAssign, Deref};
-use std::hint::unreachable_unchecked;
 use std::borrow::Cow;
-use std::str::FromStr;
+use std::hint::unreachable_unchecked;
 use std::io::Write;
+use std::num::Wrapping;
+use std::ops::{AddAssign, Deref};
+use std::str::FromStr;
 
 /**
   @note This Z80 is a bit different from Zilog Z80, and is modified by Sharp and Nintendo to cut price
@@ -27,13 +27,28 @@ pub struct Z80 {
 
 #[derive(Debug)]
 pub enum Reg {
-    A, B, C, D, E, H, L,
-    AF, BC, DE, HL, SP, PC,
+    A,
+    B,
+    C,
+    D,
+    E,
+    H,
+    L,
+    AF,
+    BC,
+    DE,
+    HL,
+    SP,
+    PC,
 }
 
 #[derive(Debug)]
 enum Condition {
-    Z, NZ, C, NC, ALWAYS
+    Z,
+    NZ,
+    C,
+    NC,
+    ALWAYS,
 }
 
 #[derive(Debug)]
@@ -115,10 +130,10 @@ enum Instruction {
     SCF,
     STOP,
     INVALID,
-    PREFIX
+    PREFIX,
 }
 
-impl Z80 where {
+impl Z80 {
     pub fn read_reg8(&self, reg: &Reg) -> u8 {
         let data = match reg {
             Reg::A => self.a,
@@ -128,7 +143,7 @@ impl Z80 where {
             Reg::E => self.e,
             Reg::H => self.h,
             Reg::L => self.l,
-            _ => panic!("Tried to load 8-bit register with Reg16")
+            _ => panic!("Tried to load 8-bit register with Reg16"),
         };
         data
     }
@@ -141,7 +156,7 @@ impl Z80 where {
             Reg::HL => ((self.h as u16) << 8 | self.l as u16),
             Reg::SP => self.sp,
             Reg::PC => self.pc,
-            _ => panic!("Tried to load 16-bit register with Reg8")
+            _ => panic!("Tried to load 16-bit register with Reg8"),
         };
         data
     }
@@ -155,7 +170,7 @@ impl Z80 where {
             Reg::E => self.e = data,
             Reg::H => self.h = data,
             Reg::L => self.l = data,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
@@ -164,22 +179,22 @@ impl Z80 where {
             Reg::AF => {
                 self.a = ((data & 0xFF00) >> 8) as u8;
                 self.f = (data & 0xF0) as u8;
-            },
+            }
             Reg::BC => {
                 self.b = ((data & 0xFF00) >> 8) as u8;
                 self.c = (data & 0xFF) as u8;
-            },
+            }
             Reg::DE => {
                 self.d = ((data & 0xFF00) >> 8) as u8;
                 self.e = (data & 0xFF) as u8;
-            },
+            }
             Reg::HL => {
                 self.h = ((data & 0xFF00) >> 8) as u8;
                 self.l = (data & 0xFF) as u8;
-            },
+            }
             Reg::SP => self.sp = data,
             Reg::PC => self.pc = data,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
@@ -203,19 +218,15 @@ impl Z80 where {
                 let addr = self.read_reg16(&r);
                 self.write_reg16(&r, self.read_reg16(&r).wrapping_add(1));
                 addr
-            },
+            }
             Index::Reg16Dec(r) => {
                 let addr = self.read_reg16(&r);
                 self.write_reg16(&r, self.read_reg16(&r).wrapping_sub(1));
                 addr
-            },
-            Index::Imm16 => self.fetch_u16(bus),
-            Index::Reg8(r) => {
-                0xFF00 | self.read_reg8(&r) as u16
-            },
-            Index::Imm8 => {
-                0xFF00 | self.fetch_u8(bus) as u16
             }
+            Index::Imm16 => self.fetch_u16(bus),
+            Index::Reg8(r) => 0xFF00 | self.read_reg8(&r) as u16,
+            Index::Imm8 => 0xFF00 | self.fetch_u8(bus) as u16,
         }
     }
 
@@ -226,13 +237,17 @@ impl Z80 where {
             Operand::Index8(addr) => {
                 let addr = self.resolve_index(bus, addr);
                 bus.read_u8(addr)
-            },
+            }
             Operand::HighIndex8(addr) => {
                 let addr = self.resolve_index(bus, addr);
                 bus.read_u8(addr)
-            },
-            Operand::Offset8 => { panic!("Offset should be treated specially!"); },
-            _ => { panic!("Tried to load 16-bit operand with op8!"); }
+            }
+            Operand::Offset8 => {
+                panic!("Offset should be treated specially!");
+            }
+            _ => {
+                panic!("Tried to load 16-bit operand with op8!");
+            }
         }
     }
 
@@ -243,8 +258,10 @@ impl Z80 where {
             Operand::Index16(addr) => {
                 let addr = self.resolve_index(bus, addr);
                 bus.read_u16(addr)
-            },
-            _ => { panic!("Tried to read 8-bit operand with Op16!"); }
+            }
+            _ => {
+                panic!("Tried to read 8-bit operand with Op16!");
+            }
         }
     }
 
@@ -254,14 +271,16 @@ impl Z80 where {
             Operand::Index8(addr) => {
                 let addr = self.resolve_index(bus, addr);
                 bus.write_u8(addr, data)
-            },
+            }
             Operand::HighIndex8(addr) => {
                 let addr = self.resolve_index(bus, addr);
                 bus.write_u8(addr, data)
-            },
+            }
             Operand::Imm8 => panic!("Unable to write to immediate!"),
             Operand::Offset8 => panic!("Unable to write to offset!"),
-            _ => { panic!("Tried to store 16-bit operand with op8!"); }
+            _ => {
+                panic!("Tried to store 16-bit operand with op8!");
+            }
         }
     }
 
@@ -271,9 +290,9 @@ impl Z80 where {
             Operand::Index16(addr) => {
                 let addr = self.resolve_index(bus, addr);
                 bus.write_u16(addr, data)
-            },
+            }
             Operand::Imm16 => panic!("Unable to write to immediate!"),
-            _ => panic!("Tried to read 8-bit operand with Op16!")
+            _ => panic!("Tried to read 8-bit operand with Op16!"),
         }
     }
 
@@ -309,17 +328,14 @@ impl Z80 where {
         self.f &= mask;
     }
 
-    fn read_flags(&self, z: bool, n: bool, h: bool, c: bool) -> bool{
+    fn read_flags(&self, z: bool, n: bool, h: bool, c: bool) -> bool {
         if z {
             (self.f & 0b10000000) != 0
-        }
-        else if n {
+        } else if n {
             (self.f & 0b01000000) != 0
-        }
-        else if h {
+        } else if h {
             (self.f & 0b00100000) != 0
-        }
-        else {
+        } else {
             (self.f & 0b00010000) != 0
         }
     }
@@ -338,18 +354,10 @@ impl Z80 where {
 
     fn check_cond(&self, cond: &Condition) -> bool {
         match cond {
-            Condition::Z => {
-                self.read_flags(true, false, false, false) == true
-            },
-            Condition::C => {
-                self.read_flags(false, false, false, true) == true
-            },
-            Condition::NZ => {
-                self.read_flags(true, false, false, false) == false
-            },
-            Condition::NC => {
-                self.read_flags(false, false, false, true) == false
-            },
+            Condition::Z => self.read_flags(true, false, false, false) == true,
+            Condition::C => self.read_flags(false, false, false, true) == true,
+            Condition::NZ => self.read_flags(true, false, false, false) == false,
+            Condition::NC => self.read_flags(false, false, false, true) == false,
             Condition::ALWAYS => true,
         }
     }
@@ -396,16 +404,16 @@ impl Z80 where {
 
             if int_vector == 0xFFFF {
                 false
-            }
-            else {
+            } else {
                 self.emi = false;
                 self.push_u16(bus, self.pc);
                 self.pc = int_vector;
                 bus.tick(4); //TODO: Check actual cycles taken
                 true
             }
+        } else {
+            false
         }
-        else { false }
     }
 
     pub fn new() -> Z80 {
@@ -452,8 +460,8 @@ impl Z80 where {
             Instruction::PREFIX => {
                 let op = self.fetch_u8(bus);
                 decode_prefix(op)
-            },
-            x => (cycle, x)
+            }
+            x => (cycle, x),
         };
 
         // Cycle can be changed on conditional jump
@@ -463,7 +471,11 @@ impl Z80 where {
         match ins {
             // Arithmetic & Logic
             Instruction::ADC(x) => {
-                let from_carry = if self.read_flags(false, false, false, true) {1u8} else {0u8};
+                let from_carry = if self.read_flags(false, false, false, true) {
+                    1u8
+                } else {
+                    0u8
+                };
                 let data = self.read_op8(bus, &x);
                 let half_carry = (self.a & 0xF) + (data & 0xF) + from_carry > 0xF;
                 let (value, carry) = self.a.overflowing_add(data);
@@ -471,7 +483,7 @@ impl Z80 where {
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(self.a == 0, false, half_carry, carry || second_carry);
-            },
+            }
             Instruction::ADD(y, x) => {
                 if opcode == 0x09 || opcode == 0x19 || opcode == 0x29 || opcode == 0x39 {
                     let src = self.read_op16(bus, &y);
@@ -481,8 +493,7 @@ impl Z80 where {
                     self.write_op16(bus, &y, value);
                     self.clear_flags(false, true, true, true);
                     self.set_flags(false, false, half_carry, carry);
-                }
-                else if opcode == 0xE8 {
+                } else if opcode == 0xE8 {
                     let src = self.read_op16(bus, &y) as u16;
                     let data = self.fetch_u8(bus) as i8 as i16 as u16;
                     let half_carry = (src & 0xF).wrapping_add(data & 0xF) & 0xF0 != 0;
@@ -491,8 +502,7 @@ impl Z80 where {
                     self.write_op16(bus, &y, value);
                     self.clear_flags(true, true, true, true);
                     self.set_flags(false, false, half_carry, carry);
-                }
-                else {
+                } else {
                     let src = self.read_op8(bus, &y);
                     let data = self.read_op8(bus, &x);
                     let half_carry = (((src & 0xF) + (data & 0xF)) & 0x10) != 0;
@@ -501,28 +511,27 @@ impl Z80 where {
                     self.clear_flags(true, true, true, true);
                     self.set_flags(value == 0, false, half_carry, carry);
                 }
-            },
+            }
             Instruction::AND(x) => {
                 let data = self.read_op8(bus, &x);
                 let value = self.a & data;
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(self.a == 0, false, true, false);
-            },
+            }
             Instruction::CP(x) => {
                 let data = self.read_op8(bus, &x);
                 let half_carry = (((self.a & 0xF).wrapping_sub(data & 0xF)) & 0x10) != 0;
                 let (value, carry) = self.a.overflowing_sub(data);
                 self.clear_flags(true, false, true, true);
                 self.set_flags(value == 0, true, half_carry, carry);
-            },
+            }
             Instruction::DEC(x) => {
                 if opcode & 0x0F == 0x0B {
                     let data = self.read_op16(bus, &x);
                     let value = data.wrapping_sub(1);
                     self.write_op16(bus, &x, value);
-                }
-                else {
+                } else {
                     let data = self.read_op8(bus, &x);
                     let half_carry = ((data & 0xF).wrapping_sub(1) & 0x10) != 0;
                     let value = data.wrapping_sub(1);
@@ -530,14 +539,13 @@ impl Z80 where {
                     self.clear_flags(true, true, true, false);
                     self.set_flags(value == 0, true, half_carry, false);
                 }
-            },
+            }
             Instruction::INC(x) => {
                 if opcode & 0x0F == 0x03 {
                     let data = self.read_op16(bus, &x);
                     let value = data.wrapping_add(1);
                     self.write_op16(bus, &x, value);
-                }
-                else {
+                } else {
                     let data = self.read_op8(bus, &x);
                     let half_carry = (((data & 0xF) + 1) & 0x10) != 0;
                     let value = data.wrapping_add(1);
@@ -545,16 +553,20 @@ impl Z80 where {
                     self.clear_flags(true, true, true, false);
                     self.set_flags(value == 0, false, half_carry, false);
                 }
-            },
+            }
             Instruction::OR(x) => {
                 let data = self.read_op8(bus, &x);
                 let value = self.a | data;
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, false);
-            },
+            }
             Instruction::SBC(x) => {
-                let from_carry = if self.read_flags(false, false, false, true) {1u8} else {0u8};
+                let from_carry = if self.read_flags(false, false, false, true) {
+                    1u8
+                } else {
+                    0u8
+                };
                 let data = self.read_op8(bus, &x);
                 let half_carry = (self.a & 0xF) < (data & 0xF) + from_carry;
                 let (value, carry) = self.a.overflowing_sub(data);
@@ -562,7 +574,7 @@ impl Z80 where {
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, true, half_carry, carry || second_carry);
-            },
+            }
             Instruction::SUB(x) => {
                 let data = self.read_op8(bus, &x);
                 let half_carry = ((self.a & 0xF).wrapping_sub(data & 0xF) & 0x10) != 0;
@@ -570,14 +582,14 @@ impl Z80 where {
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, true, half_carry, carry);
-            },
+            }
             Instruction::XOR(x) => {
                 let data = self.read_op8(bus, &x);
                 let value = self.a ^ data;
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, false);
-            },
+            }
 
             // Non-prefixed Bit Operations
             Instruction::RLCA => {
@@ -586,26 +598,26 @@ impl Z80 where {
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(false, false, false, new_carry);
-            },
+            }
             Instruction::RRCA => {
                 let new_carry = self.a & 1 != 0;
                 let value = self.a.rotate_right(1);
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(false, false, false, new_carry);
-            },
+            }
             Instruction::RLA => {
                 let new_carry = self.a & 0x80 != 0;
                 let old_carry = self.read_flags(false, false, false, true);
-                let value = (self.a << 1) | if old_carry {1} else {0};
+                let value = (self.a << 1) | if old_carry { 1 } else { 0 };
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(false, false, false, new_carry);
-            },
+            }
             Instruction::RRA => {
                 let new_carry = self.a & 1 != 0;
                 let old_carry = self.read_flags(false, false, false, true);
-                let value = (self.a >> 1) | if old_carry {0x80} else {0};
+                let value = (self.a >> 1) | if old_carry { 0x80 } else { 0 };
                 self.a = value;
                 self.clear_flags(true, true, true, true);
                 self.set_flags(false, false, false, new_carry);
@@ -617,7 +629,7 @@ impl Z80 where {
                 let value = data & y;
                 self.clear_flags(true, true, true, false);
                 self.set_flags(value == 0, false, true, false);
-            },
+            }
             Instruction::RES(y, x) => {
                 let data = self.read_op8(bus, &x);
                 let value = data & (!y);
@@ -627,23 +639,23 @@ impl Z80 where {
                 let data = self.read_op8(bus, &x);
                 let value = data | y;
                 self.write_op8(bus, &x, value);
-            },
+            }
             Instruction::SWAP(x) => {
                 let data = self.read_op8(bus, &x);
                 let value = ((data & 0x0F) << 4) | ((data & 0xF0) >> 4);
                 self.write_op8(bus, &x, value);
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, false);
-            },
+            }
             Instruction::RL(x) => {
                 let data = self.read_op8(bus, &x);
                 let new_carry = data & 0x80 != 0;
                 let old_carry = self.read_flags(false, false, false, true);
-                let value = (data << 1) | if old_carry {1} else {0};
+                let value = (data << 1) | if old_carry { 1 } else { 0 };
                 self.write_op8(bus, &x, value);
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, new_carry);
-            },
+            }
             Instruction::RLC(x) => {
                 let data = self.read_op8(bus, &x);
                 let new_carry = data & 0x80 != 0;
@@ -651,16 +663,16 @@ impl Z80 where {
                 self.write_op8(bus, &x, value);
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, new_carry);
-            },
+            }
             Instruction::RR(x) => {
                 let data = self.read_op8(bus, &x);
                 let new_carry = data & 1 != 0;
                 let old_carry = self.read_flags(false, false, false, true);
-                let value = (data >> 1) | if old_carry {0x80} else {0};
+                let value = (data >> 1) | if old_carry { 0x80 } else { 0 };
                 self.write_op8(bus, &x, value);
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, new_carry);
-            },
+            }
             Instruction::RRC(x) => {
                 let data = self.read_op8(bus, &x);
                 let new_carry = data & 1 != 0;
@@ -668,7 +680,7 @@ impl Z80 where {
                 self.write_op8(bus, &x, value);
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, new_carry);
-            },
+            }
             Instruction::SLA(x) => {
                 let data = self.read_op8(bus, &x);
                 let new_carry = data & 0x80 != 0;
@@ -676,7 +688,7 @@ impl Z80 where {
                 self.write_op8(bus, &x, value);
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, new_carry);
-            },
+            }
             Instruction::SRA(x) => {
                 let data = self.read_op8(bus, &x);
                 let new_carry = data & 1 != 0;
@@ -684,7 +696,7 @@ impl Z80 where {
                 self.write_op8(bus, &x, value);
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, new_carry);
-            },
+            }
             Instruction::SRL(x) => {
                 let data = self.read_op8(bus, &x);
                 let new_carry = data & 1 != 0;
@@ -692,7 +704,7 @@ impl Z80 where {
                 self.write_op8(bus, &x, value);
                 self.clear_flags(true, true, true, true);
                 self.set_flags(value == 0, false, false, new_carry);
-            },
+            }
 
             // Memory
             Instruction::LD(y, x) => {
@@ -704,24 +716,22 @@ impl Z80 where {
                     self.write_op16(bus, &y, value);
                     self.clear_flags(true, true, true, true);
                     self.set_flags(false, false, half_carry, carry);
-                }
-                else if self.is_16bit(&y) {
+                } else if self.is_16bit(&y) {
                     let data = self.read_op16(bus, &x);
                     self.write_op16(bus, &y, data);
-                }
-                else {
+                } else {
                     let data = self.read_op8(bus, &x);
                     self.write_op8(bus, &y, data);
                 }
-            },
+            }
             Instruction::PUSH(x) => {
                 let data = self.read_op16(bus, &x);
                 self.push_u16(bus, data);
-            },
+            }
             Instruction::POP(x) => {
                 let data = self.pop_u16(bus);
                 self.write_op16(bus, &x, data);
-            },
+            }
 
             // Jumps
             Instruction::CALL(cond, x) => {
@@ -731,11 +741,10 @@ impl Z80 where {
                     cycle = 24;
                     self.push_u16(bus, self.pc);
                     self.pc = addr;
-                }
-                else {
+                } else {
                     cycle = 12;
                 }
-            },
+            }
             Instruction::JP(cond, x) => {
                 let cond = self.check_cond(&cond);
                 let data = self.read_op16(bus, &x);
@@ -743,20 +752,19 @@ impl Z80 where {
                     self.pc = data;
                 }
                 if cycle == 0 {
-                    cycle = if cond {16} else {12};
+                    cycle = if cond { 16 } else { 12 };
                 }
-            },
+            }
             Instruction::JR(cond, x) => {
                 let cond = self.check_cond(&cond);
                 let offset = self.fetch_u8(bus) as i8 as i16;
                 if cond {
                     cycle = 12;
                     self.pc = self.pc.wrapping_add(offset as u16);
-                }
-                else {
+                } else {
                     cycle = 8;
                 }
-            },
+            }
             Instruction::RET(cond) => {
                 let cond = self.check_cond(&cond);
                 if cond {
@@ -764,18 +772,18 @@ impl Z80 where {
                     self.pc = addr;
                 }
                 if cycle == 0 {
-                    cycle = if cond {20} else {8};
+                    cycle = if cond { 20 } else { 8 };
                 }
-            },
+            }
             Instruction::RETI => {
                 let addr = self.pop_u16(bus);
                 self.pc = addr;
                 pending_turn_on_emi = true;
-            },
+            }
             Instruction::RST(v) => {
                 self.push_u16(bus, self.pc);
                 self.pc = v;
-            },
+            }
 
             // Miscellaneous
             Instruction::CCF => {
@@ -786,7 +794,7 @@ impl Z80 where {
                     self.clear_flags(false, true, true, false);
                     self.set_flags(false, false, false, true);
                 }
-            },
+            }
             Instruction::CPL => {
                 self.a = !self.a;
                 self.set_flags(false, true, true, false);
@@ -818,13 +826,13 @@ impl Z80 where {
                 self.clear_flags(true, false, true, true);
                 self.set_flags(value == 0, false, false, ((modifier << 2) & 0x100) != 0);
                 self.a = value;
-            },
+            }
             Instruction::DI => {
                 self.emi = false;
-            },
+            }
             Instruction::EI => {
                 pending_turn_on_emi = true;
-            },
+            }
             Instruction::HALT => {
                 bus.tick(cycle as i32);
                 cycle = 0;
@@ -833,14 +841,14 @@ impl Z80 where {
                         bus.tick(4);
                     }
                 }
-            },
+            }
             Instruction::NOP => {
                 // No operation
-            },
+            }
             Instruction::SCF => {
                 self.clear_flags(false, true, true, true);
                 self.set_flags(false, false, false, true);
-            },
+            }
             Instruction::STOP => {
                 let _value = self.fetch_u8(bus);
                 if self.emi {
@@ -850,11 +858,14 @@ impl Z80 where {
                         bus.tick(4);
                     }
                 }
-            },
+            }
             Instruction::INVALID => {
-                panic!(format!("Invalid opcode: {:#04x} on {:04x}!", opcode, self.pc));
-            },
-            Instruction::PREFIX => unreachable!()
+                panic!(format!(
+                    "Invalid opcode: {:#04x} on {:04x}!",
+                    opcode, self.pc
+                ));
+            }
+            Instruction::PREFIX => unreachable!(),
         }
 
         bus.tick(cycle as i32);
@@ -870,15 +881,33 @@ fn decode_ins(opcode: u8) -> (u8, Instruction) {
     match opcode {
         0x00 => (4, Instruction::NOP),
         0x01 => (12, Instruction::LD(Operand::Reg16(Reg::BC), Operand::Imm16)),
-        0x02 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::BC)), Operand::Reg8(Reg::A))),
+        0x02 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::BC)),
+                Operand::Reg8(Reg::A),
+            ),
+        ),
         0x03 => (8, Instruction::INC(Operand::Reg16(Reg::BC))),
         0x04 => (4, Instruction::INC(Operand::Reg8(Reg::B))),
         0x05 => (4, Instruction::DEC(Operand::Reg8(Reg::B))),
         0x06 => (8, Instruction::LD(Operand::Reg8(Reg::B), Operand::Imm8)),
         0x07 => (4, Instruction::RLCA),
-        0x08 => (20, Instruction::LD(Operand::Index16(Index::Imm16), Operand::Reg16(Reg::SP))),
-        0x09 => (8, Instruction::ADD(Operand::Reg16(Reg::HL), Operand::Reg16(Reg::BC))),
-        0x0A => (8, Instruction::LD(Operand::Reg8(Reg::A), Operand::Index8(Index::Reg16(Reg::BC)))),
+        0x08 => (
+            20,
+            Instruction::LD(Operand::Index16(Index::Imm16), Operand::Reg16(Reg::SP)),
+        ),
+        0x09 => (
+            8,
+            Instruction::ADD(Operand::Reg16(Reg::HL), Operand::Reg16(Reg::BC)),
+        ),
+        0x0A => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::A),
+                Operand::Index8(Index::Reg16(Reg::BC)),
+            ),
+        ),
         0x0B => (8, Instruction::DEC(Operand::Reg16(Reg::BC))),
         0x0C => (4, Instruction::INC(Operand::Reg8(Reg::C))),
         0x0D => (4, Instruction::DEC(Operand::Reg8(Reg::C))),
@@ -887,15 +916,30 @@ fn decode_ins(opcode: u8) -> (u8, Instruction) {
 
         0x10 => (4, Instruction::STOP),
         0x11 => (12, Instruction::LD(Operand::Reg16(Reg::DE), Operand::Imm16)),
-        0x12 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::DE)), Operand::Reg8(Reg::A))),
+        0x12 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::DE)),
+                Operand::Reg8(Reg::A),
+            ),
+        ),
         0x13 => (8, Instruction::INC(Operand::Reg16(Reg::DE))),
         0x14 => (4, Instruction::INC(Operand::Reg8(Reg::D))),
         0x15 => (4, Instruction::DEC(Operand::Reg8(Reg::D))),
         0x16 => (8, Instruction::LD(Operand::Reg8(Reg::D), Operand::Imm8)),
         0x17 => (4, Instruction::RLA),
         0x18 => (12, Instruction::JR(Condition::ALWAYS, Operand::Offset8)),
-        0x19 => (8, Instruction::ADD(Operand::Reg16(Reg::HL), Operand::Reg16(Reg::DE))),
-        0x1A => (8, Instruction::LD(Operand::Reg8(Reg::A), Operand::Index8(Index::Reg16(Reg::DE)))),
+        0x19 => (
+            8,
+            Instruction::ADD(Operand::Reg16(Reg::HL), Operand::Reg16(Reg::DE)),
+        ),
+        0x1A => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::A),
+                Operand::Index8(Index::Reg16(Reg::DE)),
+            ),
+        ),
         0x1B => (8, Instruction::DEC(Operand::Reg16(Reg::DE))),
         0x1C => (4, Instruction::INC(Operand::Reg8(Reg::E))),
         0x1D => (4, Instruction::DEC(Operand::Reg8(Reg::E))),
@@ -904,15 +948,30 @@ fn decode_ins(opcode: u8) -> (u8, Instruction) {
 
         0x20 => (0, Instruction::JR(Condition::NZ, Operand::Offset8)),
         0x21 => (12, Instruction::LD(Operand::Reg16(Reg::HL), Operand::Imm16)),
-        0x22 => (8, Instruction::LD(Operand::Index8(Index::Reg16Inc(Reg::HL)), Operand::Reg8(Reg::A))),
+        0x22 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16Inc(Reg::HL)),
+                Operand::Reg8(Reg::A),
+            ),
+        ),
         0x23 => (8, Instruction::INC(Operand::Reg16(Reg::HL))),
         0x24 => (4, Instruction::INC(Operand::Reg8(Reg::H))),
         0x25 => (4, Instruction::DEC(Operand::Reg8(Reg::H))),
         0x26 => (8, Instruction::LD(Operand::Reg8(Reg::H), Operand::Imm8)),
         0x27 => (4, Instruction::DAA),
         0x28 => (0, Instruction::JR(Condition::Z, Operand::Offset8)),
-        0x29 => (8, Instruction::ADD(Operand::Reg16(Reg::HL), Operand::Reg16(Reg::HL))),
-        0x2A => (8, Instruction::LD(Operand::Reg8(Reg::A), Operand::Index8(Index::Reg16Inc(Reg::HL)))),
+        0x29 => (
+            8,
+            Instruction::ADD(Operand::Reg16(Reg::HL), Operand::Reg16(Reg::HL)),
+        ),
+        0x2A => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::A),
+                Operand::Index8(Index::Reg16Inc(Reg::HL)),
+            ),
+        ),
         0x2B => (8, Instruction::DEC(Operand::Reg16(Reg::HL))),
         0x2C => (4, Instruction::INC(Operand::Reg8(Reg::L))),
         0x2D => (4, Instruction::DEC(Operand::Reg8(Reg::L))),
@@ -921,97 +980,373 @@ fn decode_ins(opcode: u8) -> (u8, Instruction) {
 
         0x30 => (0, Instruction::JR(Condition::NC, Operand::Offset8)),
         0x31 => (12, Instruction::LD(Operand::Reg16(Reg::SP), Operand::Imm16)),
-        0x32 => (8, Instruction::LD(Operand::Index8(Index::Reg16Dec(Reg::HL)), Operand::Reg8(Reg::A))),
+        0x32 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16Dec(Reg::HL)),
+                Operand::Reg8(Reg::A),
+            ),
+        ),
         0x33 => (8, Instruction::INC(Operand::Reg16(Reg::SP))),
         0x34 => (12, Instruction::INC(Operand::Index8(Index::Reg16(Reg::HL)))),
         0x35 => (12, Instruction::DEC(Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x36 => (12, Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Imm8)),
+        0x36 => (
+            12,
+            Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Imm8),
+        ),
         0x37 => (4, Instruction::SCF),
         0x38 => (0, Instruction::JR(Condition::C, Operand::Offset8)),
-        0x39 => (8, Instruction::ADD(Operand::Reg16(Reg::HL), Operand::Reg16(Reg::SP))),
-        0x3A => (8, Instruction::LD(Operand::Reg8(Reg::A), Operand::Index8(Index::Reg16Dec(Reg::HL)))),
+        0x39 => (
+            8,
+            Instruction::ADD(Operand::Reg16(Reg::HL), Operand::Reg16(Reg::SP)),
+        ),
+        0x3A => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::A),
+                Operand::Index8(Index::Reg16Dec(Reg::HL)),
+            ),
+        ),
         0x3B => (8, Instruction::DEC(Operand::Reg16(Reg::SP))),
         0x3C => (4, Instruction::INC(Operand::Reg8(Reg::A))),
         0x3D => (4, Instruction::DEC(Operand::Reg8(Reg::A))),
         0x3E => (8, Instruction::LD(Operand::Reg8(Reg::A), Operand::Imm8)),
         0x3F => (4, Instruction::CCF),
 
-        0x40 => (4, Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::B))),
-        0x41 => (4, Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::C))),
-        0x42 => (4, Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::D))),
-        0x43 => (4, Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::E))),
-        0x44 => (4, Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::H))),
-        0x45 => (4, Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::L))),
-        0x46 => (8, Instruction::LD(Operand::Reg8(Reg::B), Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x47 => (4, Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::A))),
-        0x48 => (4, Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::B))),
-        0x49 => (4, Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::C))),
-        0x4A => (4, Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::D))),
-        0x4B => (4, Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::E))),
-        0x4C => (4, Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::H))),
-        0x4D => (4, Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::L))),
-        0x4E => (8, Instruction::LD(Operand::Reg8(Reg::C), Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x4F => (4, Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::A))),
+        0x40 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::B)),
+        ),
+        0x41 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::C)),
+        ),
+        0x42 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::D)),
+        ),
+        0x43 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::E)),
+        ),
+        0x44 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::H)),
+        ),
+        0x45 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::L)),
+        ),
+        0x46 => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::B),
+                Operand::Index8(Index::Reg16(Reg::HL)),
+            ),
+        ),
+        0x47 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::B), Operand::Reg8(Reg::A)),
+        ),
+        0x48 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::B)),
+        ),
+        0x49 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::C)),
+        ),
+        0x4A => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::D)),
+        ),
+        0x4B => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::E)),
+        ),
+        0x4C => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::H)),
+        ),
+        0x4D => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::L)),
+        ),
+        0x4E => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::C),
+                Operand::Index8(Index::Reg16(Reg::HL)),
+            ),
+        ),
+        0x4F => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::C), Operand::Reg8(Reg::A)),
+        ),
 
-        0x50 => (4, Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::B))),
-        0x51 => (4, Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::C))),
-        0x52 => (4, Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::D))),
-        0x53 => (4, Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::E))),
-        0x54 => (4, Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::H))),
-        0x55 => (4, Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::L))),
-        0x56 => (8, Instruction::LD(Operand::Reg8(Reg::D), Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x57 => (4, Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::A))),
-        0x58 => (4, Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::B))),
-        0x59 => (4, Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::C))),
-        0x5A => (4, Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::D))),
-        0x5B => (4, Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::E))),
-        0x5C => (4, Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::H))),
-        0x5D => (4, Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::L))),
-        0x5E => (8, Instruction::LD(Operand::Reg8(Reg::E), Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x5F => (4, Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::A))),
+        0x50 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::B)),
+        ),
+        0x51 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::C)),
+        ),
+        0x52 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::D)),
+        ),
+        0x53 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::E)),
+        ),
+        0x54 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::H)),
+        ),
+        0x55 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::L)),
+        ),
+        0x56 => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::D),
+                Operand::Index8(Index::Reg16(Reg::HL)),
+            ),
+        ),
+        0x57 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::D), Operand::Reg8(Reg::A)),
+        ),
+        0x58 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::B)),
+        ),
+        0x59 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::C)),
+        ),
+        0x5A => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::D)),
+        ),
+        0x5B => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::E)),
+        ),
+        0x5C => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::H)),
+        ),
+        0x5D => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::L)),
+        ),
+        0x5E => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::E),
+                Operand::Index8(Index::Reg16(Reg::HL)),
+            ),
+        ),
+        0x5F => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::E), Operand::Reg8(Reg::A)),
+        ),
 
-        0x60 => (4, Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::B))),
-        0x61 => (4, Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::C))),
-        0x62 => (4, Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::D))),
-        0x63 => (4, Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::E))),
-        0x64 => (4, Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::H))),
-        0x65 => (4, Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::L))),
-        0x66 => (8, Instruction::LD(Operand::Reg8(Reg::H), Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x67 => (4, Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::A))),
-        0x68 => (4, Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::B))),
-        0x69 => (4, Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::C))),
-        0x6A => (4, Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::D))),
-        0x6B => (4, Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::E))),
-        0x6C => (4, Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::H))),
-        0x6D => (4, Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::L))),
-        0x6E => (8, Instruction::LD(Operand::Reg8(Reg::L), Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x6F => (4, Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::A))),
+        0x60 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::B)),
+        ),
+        0x61 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::C)),
+        ),
+        0x62 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::D)),
+        ),
+        0x63 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::E)),
+        ),
+        0x64 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::H)),
+        ),
+        0x65 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::L)),
+        ),
+        0x66 => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::H),
+                Operand::Index8(Index::Reg16(Reg::HL)),
+            ),
+        ),
+        0x67 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::H), Operand::Reg8(Reg::A)),
+        ),
+        0x68 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::B)),
+        ),
+        0x69 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::C)),
+        ),
+        0x6A => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::D)),
+        ),
+        0x6B => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::E)),
+        ),
+        0x6C => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::H)),
+        ),
+        0x6D => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::L)),
+        ),
+        0x6E => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::L),
+                Operand::Index8(Index::Reg16(Reg::HL)),
+            ),
+        ),
+        0x6F => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::L), Operand::Reg8(Reg::A)),
+        ),
 
-        0x70 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Reg8(Reg::B))),
-        0x71 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Reg8(Reg::C))),
-        0x72 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Reg8(Reg::D))),
-        0x73 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Reg8(Reg::E))),
-        0x74 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Reg8(Reg::H))),
-        0x75 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Reg8(Reg::L))),
+        0x70 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::HL)),
+                Operand::Reg8(Reg::B),
+            ),
+        ),
+        0x71 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::HL)),
+                Operand::Reg8(Reg::C),
+            ),
+        ),
+        0x72 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::HL)),
+                Operand::Reg8(Reg::D),
+            ),
+        ),
+        0x73 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::HL)),
+                Operand::Reg8(Reg::E),
+            ),
+        ),
+        0x74 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::HL)),
+                Operand::Reg8(Reg::H),
+            ),
+        ),
+        0x75 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::HL)),
+                Operand::Reg8(Reg::L),
+            ),
+        ),
         0x76 => (4, Instruction::HALT),
-        0x77 => (8, Instruction::LD(Operand::Index8(Index::Reg16(Reg::HL)), Operand::Reg8(Reg::A))),
-        0x78 => (4, Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::B))),
-        0x79 => (4, Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::C))),
-        0x7A => (4, Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::D))),
-        0x7B => (4, Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::E))),
-        0x7C => (4, Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::H))),
-        0x7D => (4, Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::L))),
-        0x7E => (8, Instruction::LD(Operand::Reg8(Reg::A), Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x7F => (4, Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::A))),
+        0x77 => (
+            8,
+            Instruction::LD(
+                Operand::Index8(Index::Reg16(Reg::HL)),
+                Operand::Reg8(Reg::A),
+            ),
+        ),
+        0x78 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::B)),
+        ),
+        0x79 => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::C)),
+        ),
+        0x7A => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::D)),
+        ),
+        0x7B => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::E)),
+        ),
+        0x7C => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::H)),
+        ),
+        0x7D => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::L)),
+        ),
+        0x7E => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::A),
+                Operand::Index8(Index::Reg16(Reg::HL)),
+            ),
+        ),
+        0x7F => (
+            4,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::A)),
+        ),
 
-        0x80 => (4, Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::B))),
-        0x81 => (4, Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::C))),
-        0x82 => (4, Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::D))),
-        0x83 => (4, Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::E))),
-        0x84 => (4, Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::H))),
-        0x85 => (4, Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::L))),
-        0x86 => (8, Instruction::ADD(Operand::Reg8(Reg::A), Operand::Index8(Index::Reg16(Reg::HL)))),
-        0x87 => (4, Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::A))),
+        0x80 => (
+            4,
+            Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::B)),
+        ),
+        0x81 => (
+            4,
+            Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::C)),
+        ),
+        0x82 => (
+            4,
+            Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::D)),
+        ),
+        0x83 => (
+            4,
+            Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::E)),
+        ),
+        0x84 => (
+            4,
+            Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::H)),
+        ),
+        0x85 => (
+            4,
+            Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::L)),
+        ),
+        0x86 => (
+            8,
+            Instruction::ADD(
+                Operand::Reg8(Reg::A),
+                Operand::Index8(Index::Reg16(Reg::HL)),
+            ),
+        ),
+        0x87 => (
+            4,
+            Instruction::ADD(Operand::Reg8(Reg::A), Operand::Reg8(Reg::A)),
+        ),
         0x88 => (4, Instruction::ADC(Operand::Reg8(Reg::B))),
         0x89 => (4, Instruction::ADC(Operand::Reg8(Reg::C))),
         0x8A => (4, Instruction::ADC(Operand::Reg8(Reg::D))),
@@ -1106,41 +1441,79 @@ fn decode_ins(opcode: u8) -> (u8, Instruction) {
         0xDE => (8, Instruction::SBC(Operand::Imm8)),
         0xDF => (16, Instruction::RST(0x18)),
 
-        0xE0 => (12, Instruction::LD(Operand::HighIndex8(Index::Imm8), Operand::Reg8(Reg::A))),
+        0xE0 => (
+            12,
+            Instruction::LD(Operand::HighIndex8(Index::Imm8), Operand::Reg8(Reg::A)),
+        ),
         0xE1 => (12, Instruction::POP(Operand::Reg16(Reg::HL))),
-        0xE2 => (8, Instruction::LD(Operand::HighIndex8(Index::Reg8(Reg::C)), Operand::Reg8(Reg::A))),
+        0xE2 => (
+            8,
+            Instruction::LD(
+                Operand::HighIndex8(Index::Reg8(Reg::C)),
+                Operand::Reg8(Reg::A),
+            ),
+        ),
         0xE3 => (0, Instruction::INVALID),
         0xE4 => (0, Instruction::INVALID),
         0xE5 => (16, Instruction::PUSH(Operand::Reg16(Reg::HL))),
         0xE6 => (8, Instruction::AND(Operand::Imm8)),
         0xE7 => (16, Instruction::RST(0x20)),
-        0xE8 => (16, Instruction::ADD(Operand::Reg16(Reg::SP), Operand::Offset8)),
-        0xE9 => (4, Instruction::JP(Condition::ALWAYS, Operand::Reg16(Reg::HL))),
-        0xEA => (16, Instruction::LD(Operand::Index8(Index::Imm16), Operand::Reg8(Reg::A))),
+        0xE8 => (
+            16,
+            Instruction::ADD(Operand::Reg16(Reg::SP), Operand::Offset8),
+        ),
+        0xE9 => (
+            4,
+            Instruction::JP(Condition::ALWAYS, Operand::Reg16(Reg::HL)),
+        ),
+        0xEA => (
+            16,
+            Instruction::LD(Operand::Index8(Index::Imm16), Operand::Reg8(Reg::A)),
+        ),
         0xEB => (0, Instruction::INVALID),
         0xEC => (0, Instruction::INVALID),
         0xED => (0, Instruction::INVALID),
         0xEE => (8, Instruction::XOR(Operand::Imm8)),
         0xEF => (16, Instruction::RST(0x28)),
 
-        0xF0 => (12, Instruction::LD(Operand::Reg8(Reg::A), Operand::HighIndex8(Index::Imm8))),
+        0xF0 => (
+            12,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::HighIndex8(Index::Imm8)),
+        ),
         0xF1 => (12, Instruction::POP(Operand::Reg16(Reg::AF))),
-        0xF2 => (8, Instruction::LD(Operand::Reg8(Reg::A), Operand::HighIndex8(Index::Reg8(Reg::C)))),
+        0xF2 => (
+            8,
+            Instruction::LD(
+                Operand::Reg8(Reg::A),
+                Operand::HighIndex8(Index::Reg8(Reg::C)),
+            ),
+        ),
         0xF3 => (4, Instruction::DI),
         0xF4 => (0, Instruction::INVALID),
         0xF5 => (16, Instruction::PUSH(Operand::Reg16(Reg::AF))),
         0xF6 => (8, Instruction::OR(Operand::Imm8)),
         0xF7 => (16, Instruction::RST(0x30)),
-        0xF8 => (12, Instruction::LD(Operand::Reg16(Reg::HL), Operand::Offset8)),
-        0xF9 => (8, Instruction::LD(Operand::Reg16(Reg::SP), Operand::Reg16(Reg::HL))),
-        0xFA => (16, Instruction::LD(Operand::Reg8(Reg::A), Operand::Index8(Index::Imm16))),
+        0xF8 => (
+            12,
+            Instruction::LD(Operand::Reg16(Reg::HL), Operand::Offset8),
+        ),
+        0xF9 => (
+            8,
+            Instruction::LD(Operand::Reg16(Reg::SP), Operand::Reg16(Reg::HL)),
+        ),
+        0xFA => (
+            16,
+            Instruction::LD(Operand::Reg8(Reg::A), Operand::Index8(Index::Imm16)),
+        ),
         0xFB => (4, Instruction::EI),
         0xFC => (0, Instruction::INVALID),
         0xFD => (0, Instruction::INVALID),
         0xFE => (8, Instruction::CP(Operand::Imm8)),
         0xFF => (16, Instruction::RST(0x38)),
 
-        _ => { unsafe { unreachable_unchecked(); } }
+        _ => unsafe {
+            unreachable_unchecked();
+        },
     }
 }
 
@@ -1159,29 +1532,25 @@ fn decode_prefix(opcode: u8) -> (u8, Instruction) {
         5 => (8, Operand::Reg8(Reg::L)),
         6 => (12, Operand::Index8(Index::Reg16(Reg::HL))),
         7 => (8, Operand::Reg8(Reg::A)),
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     let ins = match mode {
-        0 => {
-            match y {
-                0 => Instruction::RLC(reg),
-                1 => Instruction::RRC(reg),
-                2 => Instruction::RL(reg),
-                3 => Instruction::RR(reg),
-                4 => Instruction::SLA(reg),
-                5 => Instruction::SRA(reg),
-                6 => Instruction::SWAP(reg),
-                7 => Instruction::SRL(reg),
-                _ => unreachable!()
-            }
+        0 => match y {
+            0 => Instruction::RLC(reg),
+            1 => Instruction::RRC(reg),
+            2 => Instruction::RL(reg),
+            3 => Instruction::RR(reg),
+            4 => Instruction::SLA(reg),
+            5 => Instruction::SRA(reg),
+            6 => Instruction::SWAP(reg),
+            7 => Instruction::SRL(reg),
+            _ => unreachable!(),
         },
-        1 => {
-            Instruction::BIT(1 << y, reg)
-        },
+        1 => Instruction::BIT(1 << y, reg),
         2 => Instruction::RES(1 << y, reg),
         3 => Instruction::SET(1 << y, reg),
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     (cycle, ins)

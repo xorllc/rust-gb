@@ -1,14 +1,14 @@
-use std::path::{Path, PathBuf};
+use memmap::{Mmap, MmapMut, MmapOptions};
 use std::fs::{File, OpenOptions};
-use std::io::{Seek, SeekFrom, Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
-use memmap::{Mmap, MmapMut, MmapOptions};
 
 pub struct SaveFile {
     path: PathBuf,
     capacity: usize,
-    data: Option<MmapMut>
+    data: Option<MmapMut>,
 }
 
 impl SaveFile {
@@ -17,23 +17,25 @@ impl SaveFile {
             return SaveFile {
                 path: path.as_ref().to_owned(),
                 data: None,
-                capacity
-            }
+                capacity,
+            };
         }
         let mut file = OpenOptions::new()
-            .read(true).write(true).truncate(false).create(true)
-            .open(&path).unwrap();
+            .read(true)
+            .write(true)
+            .truncate(false)
+            .create(true)
+            .open(&path)
+            .unwrap();
 
         file.set_len(capacity as u64).unwrap();
 
-        let data = unsafe {
-            Mmap::map(&file).unwrap().make_mut().unwrap()
-        };
+        let data = unsafe { Mmap::map(&file).unwrap().make_mut().unwrap() };
 
         SaveFile {
             path: path.as_ref().to_owned(),
             data: Some(data),
-            capacity
+            capacity,
         }
     }
 
@@ -47,7 +49,7 @@ impl SaveFile {
                 let mut y = x.to_owned();
                 y.push_str(".sav");
                 y
-            },
+            }
             None => {
                 let mut y = ext.to_owned();
                 y.push_str(".sav");

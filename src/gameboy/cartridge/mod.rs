@@ -1,11 +1,11 @@
-mod rom;
 mod mbc1;
 mod mbc3;
+mod rom;
 mod save_file;
 
 use save_file::SaveFile;
-use std::{fs, io};
 use std::path::PathBuf;
+use std::{fs, io};
 
 pub trait Cartridge {
     fn read_u8(&mut self, addr: u16) -> u8;
@@ -20,12 +20,10 @@ pub fn open(path: &str) -> io::Result<Box<dyn Cartridge>> {
     let mut cartridge;
 
     match content[0x0147] {
-        0x00 => {
-            cartridge = rom::ROM::from_content(content)
-        },
+        0x00 => cartridge = rom::ROM::from_content(content),
         0x01..=0x03 => {
             cartridge = mbc1::MBC1::from_content(content, &path);
-        },
+        }
         0x0F..=0x13 => {
             cartridge = mbc3::MBC3::from_content(content, &path);
         }
@@ -42,7 +40,9 @@ fn validate(content: &Vec<u8>) -> bool {
     let mut title = Vec::new();
     for i in 0..11 {
         let ch = content[i + 0x0134];
-        if ch == 0 { break }
+        if ch == 0 {
+            break;
+        }
         title.push(ch);
     }
 
@@ -53,8 +53,7 @@ fn validate(content: &Vec<u8>) -> bool {
 
     if content[0x014A] == 0 {
         println!("Region: Japanese");
-    }
-    else {
+    } else {
         println!("Region: Oversea");
     }
 
@@ -72,7 +71,9 @@ fn validate(content: &Vec<u8>) -> bool {
 
     let mut rom_checksum: u16 = 0;
     for i in 0..content.len() {
-        if i == 0x14E || i == 0x14F { continue }
+        if i == 0x14E || i == 0x14F {
+            continue;
+        }
         rom_checksum = rom_checksum.wrapping_add(content[i] as u16);
     }
 

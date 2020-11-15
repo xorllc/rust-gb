@@ -46,7 +46,9 @@ impl GBTimer {
             0xFF05 => self.timer,
             0xFF06 => self.timer_modulo,
             0xFF07 => self.timer_control,
-            _ => { unreachable!(); }
+            _ => {
+                unreachable!();
+            }
         }
     }
 
@@ -56,17 +58,21 @@ impl GBTimer {
             0xFF05 => self.timer = data,
             0xFF06 => self.timer_modulo = data,
             0xFF07 => self.timer_control = data & 7,
-            _ => { unreachable!(); }
+            _ => {
+                unreachable!();
+            }
         }
     }
 
     fn get_timer_clock_mode(&self) -> u16 {
         match self.timer_control & 3 {
-            0 => {1 << 9},
-            1 => {1 << 3},
-            2 => {1 << 5},
-            3 => {1 << 7},
-            _ => { unreachable!(); }
+            0 => 1 << 9,
+            1 => 1 << 3,
+            2 => 1 << 5,
+            3 => 1 << 7,
+            _ => {
+                unreachable!();
+            }
         }
     }
 

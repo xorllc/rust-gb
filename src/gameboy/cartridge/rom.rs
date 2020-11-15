@@ -1,7 +1,7 @@
 use super::Cartridge;
 
 pub struct ROM {
-    _rom: [u8; 32768]
+    _rom: [u8; 32768],
 }
 
 impl ROM {
@@ -15,9 +15,7 @@ impl ROM {
             rom[i] = content[i];
         }
 
-        Box::new(ROM {
-            _rom: rom
-        })
+        Box::new(ROM { _rom: rom })
     }
 }
 
@@ -27,12 +25,10 @@ impl Cartridge for ROM {
 
         if addr < self._rom.len() {
             self._rom[addr]
-        }
-        else {
+        } else {
             0xFF
         }
     }
 
-    fn write_u8(&mut self, addr: u16, data: u8) {
-    }
+    fn write_u8(&mut self, addr: u16, data: u8) {}
 }

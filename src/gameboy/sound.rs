@@ -1,9 +1,9 @@
-use sdl2::{AudioSubsystem, Sdl, EventPump};
-use std::rc::Rc;
-use std::sync::Mutex;
-use sdl2::audio::{AudioSpec, AudioFormat, AudioSpecDesired, AudioCallback, AudioDevice, AudioCVT};
-use std::sync::mpsc::{SyncSender, Receiver, RecvTimeoutError};
+use sdl2::audio::{AudioCVT, AudioCallback, AudioDevice, AudioFormat, AudioSpec, AudioSpecDesired};
+use sdl2::{AudioSubsystem, EventPump, Sdl};
 use std::io::Write;
+use std::rc::Rc;
+use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender};
+use std::sync::Mutex;
 use std::time::Duration;
 
 const MASTER_CLOCK: i32 = 4194304;
@@ -21,12 +21,12 @@ impl AudioCallback for Callback {
         match self.audio_rx.recv_timeout(Duration::from_millis(30)) {
             Ok(x) => {
                 buf.copy_from_slice(&x);
-            },
+            }
             Err(_) => {
                 for i in 0..buf.len() {
                     buf[i] = 0.;
                 }
-            },
+            }
         }
 
         for i in 0..buf.len() {
@@ -97,12 +97,11 @@ impl AudioProcessor {
         // Last sample is not yet complete; Don't use that sample
         if self.output_buffer_pos <= 256 {
             None
-        }
-        else {
+        } else {
             let mut ret = [0.; 256];
             ret.copy_from_slice(&self.output_buffer[0..256]);
             for i in 256..self.output_buffer_pos {
-                self.output_buffer[i-256] = self.output_buffer[i];
+                self.output_buffer[i - 256] = self.output_buffer[i];
             }
             self.output_buffer_pos -= 256;
             Some(ret)
@@ -156,7 +155,7 @@ impl FrequencySweep {
             inc,
             shift_amount,
             timer_await: 0,
-            update_rate: update_rate as i32
+            update_rate: update_rate as i32,
         }
     }
 
@@ -223,7 +222,7 @@ impl VolumeSweep {
         let sweep_time = (nrx2 & 7) as i8;
         VolumeSweep {
             curr_vol: ((nrx2 >> 4) & 0xF) as i8,
-            change_amount: if inc {1} else {-1},
+            change_amount: if inc { 1 } else { -1 },
             sweep_time: sweep_time as i32,
             sweep_await: 0,
         }
@@ -292,7 +291,10 @@ impl Tone {
         Tone {
             freq_sweep: FrequencySweep::default(),
             volume_sweep: VolumeSweep::default(),
-            length_timer: LengthTimer { enabled: false, length: 0 },
+            length_timer: LengthTimer {
+                enabled: false,
+                length: 0,
+            },
             has_freq_sweep,
             written_samples: 0,
             nrx0: 0,
@@ -325,7 +327,9 @@ impl Tone {
         let freq_val = if self.freq_sweep.is_enabled() {
             match self.freq_sweep.tick(clock) {
                 Some(x) => x,
-                None => { return 0.; }
+                None => {
+                    return 0.;
+                }
             }
         } else {
             self.get_freq_val()
@@ -353,15 +357,15 @@ impl Tone {
                 if self.has_freq_sweep {
                     self.freq_sweep.reload(data);
                 }
-            },
+            }
             1 => {
                 self.nrx1 = data;
                 self.length_timer.set_length((data & 0x3F) as i32);
-            },
+            }
             2 => {
                 self.nrx2 = data;
                 self.volume_sweep = VolumeSweep::new(data);
-            },
+            }
             3 => self.nrx3 = data,
             4 => {
                 self.nrx4 = data;
@@ -372,8 +376,8 @@ impl Tone {
                     }
                 }
                 self.length_timer.enabled = (data & 0x40 != 0);
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 }
@@ -388,13 +392,16 @@ struct Wave {
     nrx2: u8,
     nrx3: u8,
     nrx4: u8,
-    wave_table: [u8; 32]
+    wave_table: [u8; 32],
 }
 
 impl Wave {
     fn new() -> Wave {
         Wave {
-            length_timer: LengthTimer { enabled: false, length: 0 },
+            length_timer: LengthTimer {
+                enabled: false,
+                length: 0,
+            },
             written_samples: 0,
             pos: 0,
             nrx0: 0,
@@ -402,7 +409,7 @@ impl Wave {
             nrx2: 0,
             nrx3: 0,
             nrx4: 0,
-            wave_table: [0xFF; 32]
+            wave_table: [0xFF; 32],
         }
     }
 
@@ -431,11 +438,11 @@ impl Wave {
         match reg {
             0 => {
                 self.nrx0 = data;
-            },
+            }
             1 => {
                 self.nrx1 = data;
                 self.length_timer.set_length(data as i32);
-            },
+            }
             2 => self.nrx2 = data,
             3 => self.nrx3 = data,
             4 => {
@@ -444,8 +451,8 @@ impl Wave {
                     //self.written_samples = 0;
                 }
                 self.length_timer.enabled = (data & 0x40 != 0);
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 
@@ -474,14 +481,17 @@ struct Noise {
 impl Noise {
     fn new() -> Noise {
         Noise {
-            length_timer: LengthTimer { enabled: false, length: 0 },
+            length_timer: LengthTimer {
+                enabled: false,
+                length: 0,
+            },
             volume_sweep: VolumeSweep::default(),
             written_samples: 0,
             noise_sample: 0xFFFF,
             nrx1: 0,
             nrx2: 0,
             nrx3: 0,
-            nrx4: 0
+            nrx4: 0,
         }
     }
 
@@ -534,11 +544,11 @@ impl Noise {
             1 => {
                 self.nrx1 = data;
                 self.length_timer.set_length((data & 0x3F) as i32);
-            },
+            }
             2 => {
                 self.nrx2 = data;
                 self.volume_sweep = VolumeSweep::new(data);
-            },
+            }
             3 => self.nrx3 = data,
             4 => {
                 self.nrx4 = data;
@@ -547,8 +557,8 @@ impl Noise {
                     self.written_samples = 0;
                     self.noise_sample = 0xFFFF;
                 }
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 }
@@ -575,12 +585,14 @@ impl Sound {
         let spec = AudioSpecDesired {
             freq: Some(48000),
             channels: Some(1),
-            samples: Some(256)
+            samples: Some(256),
         };
-        let player = audio.open_playback(None, &spec, |spec| {
-            println!("Open audio device: {:?}", spec);
-            Callback {audio_rx}
-        }).unwrap();
+        let player = audio
+            .open_playback(None, &spec, |spec| {
+                println!("Open audio device: {:?}", spec);
+                Callback { audio_rx }
+            })
+            .unwrap();
         player.resume();
         let audio_cvt = AudioProcessor::new();
         Sound {
@@ -603,7 +615,7 @@ impl Sound {
         match self.audio_cvt.pop() {
             Some(x) => {
                 self.audio_tx.send(x).unwrap();
-            },
+            }
             None => {}
         }
     }
@@ -658,7 +670,7 @@ impl Sound {
     }
 
     pub fn tick(&mut self, cycles: i32) -> u8 {
-        for _ in 0..cycles/FREQ_DIVISOR {
+        for _ in 0..cycles / FREQ_DIVISOR {
             let mut samples = [0.0; 4];
             samples[0] = self.tone1.tick(&self.clock);
             samples[1] = self.tone2.tick(&self.clock);

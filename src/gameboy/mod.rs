@@ -1,27 +1,27 @@
 mod cartridge;
+mod gb_timer;
+mod joypad;
 mod memory_bus;
 mod ppu;
 mod sound;
 mod z80;
-mod joypad;
-mod gb_timer;
 
-use memory_bus::MemoryBus;
-use z80::Z80;
-use ppu::PPU;
-use sdl2::{Sdl, EventPump};
-use std::sync::atomic::Ordering;
+use self::joypad::KeyState;
+use crate::gameboy::sound::Sound;
+use crate::gameboy::z80::Reg;
 use joypad::Joypad;
-use std::rc::Rc;
-use std::sync::Mutex;
+use memory_bus::MemoryBus;
+use ppu::PPU;
 use sdl2::keyboard::Keycode;
+use sdl2::{EventPump, Sdl};
 use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
+use std::sync::atomic::Ordering;
+use std::sync::mpsc::{Receiver, SyncSender};
+use std::sync::Mutex;
 use std::thread::sleep;
 use std::time::Duration;
-use std::sync::mpsc::{SyncSender, Receiver};
-use self::joypad::KeyState;
-use crate::gameboy::z80::Reg;
-use crate::gameboy::sound::Sound;
+use z80::Z80;
 
 pub struct Gameboy {
     mem: MemoryBus,
@@ -33,7 +33,7 @@ pub struct Gameboy {
 impl Gameboy {
     pub fn new(sdl: &Sdl, rom_path: &str) -> Gameboy {
         let cart = cartridge::open(rom_path).unwrap();
-        let bios = std::fs::read("res/bios.bin").unwrap_or_else(|_| {Vec::new()});
+        let bios = std::fs::read("res/bios.bin").unwrap_or_else(|_| Vec::new());
         let bios_len = bios.len();
 
         let ppu = PPU::new(sdl);
@@ -55,7 +55,8 @@ impl Gameboy {
     /// Run until the next vblank interrupt
     pub fn advance_frame(&mut self, event_pump: &EventPump) {
         {
-            let keys: Vec<Keycode> = event_pump.keyboard_state()
+            let keys: Vec<Keycode> = event_pump
+                .keyboard_state()
                 .pressed_scancodes()
                 .filter_map(Keycode::from_scancode)
                 .collect();
